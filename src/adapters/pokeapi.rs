@@ -5,6 +5,7 @@ use std::fmt;
 
 use serde::Deserialize;
 
+use crate::app::ports::{PokedexSource, SourceError};
 use crate::domain::language::{Language, LocalizedText};
 use crate::domain::species::{FlavorText, PokedexNumber, PokemonType, Species, TypeTag};
 
@@ -238,6 +239,91 @@ pub fn assemble(
     }
 }
 
+// ---- HTTP 소스 ----
+
+/// 스프라이트 응답 크기 상한(바이트). 비정상 응답에 메모리를 쓰지 않게 막는다.
+const MAX_SPRITE_BYTES: u64 = 5 * 1024 * 1024;
+
+/// PokéAPI HTTP 클라이언트. `sync`에서만 쓴다(동기 방식, 비동기 런타임 없음).
+pub struct UreqSource {
+    agent: ureq::Agent,
+    base: String,
+}
+
+impl Default for UreqSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl UreqSource {
+    pub fn new() -> UreqSource {
+        let agent = ureq::AgentBuilder::new()
+            .user_agent(&format!("pokehi/{}", env!("CARGO_PKG_VERSION")))
+            .timeout(std::time::Duration::from_secs(10))
+            .build();
+        UreqSource {
+            agent,
+            base: "https://pokeapi.co/api/v2".to_string(),
+        }
+    }
+
+    fn get(&self, url: &str) -> Result<ureq::Response, SourceError> {
+        self.agent.get(url).call().map_err(|e| match e {
+            ureq::Error::Status(code, _) if code == 429 || code >= 500 => {
+                SourceError::Transient(format!("HTTP {code}: {url}"))
+            }
+            ureq::Error::Status(code, _) => SourceError::Permanent(format!("HTTP {code}: {url}")),
+            ureq::Error::Transport(t) => SourceError::Transient(format!("네트워크 오류: {t}")),
+        })
+    }
+
+    fn get_text(&self, url: &str) -> Result<String, SourceError> {
+        self.get(url)?
+            .into_string()
+            .map_err(|e| SourceError::Transient(format!("응답 읽기 실패: {e}")))
+    }
+}
+
+fn permanent(e: ParseError) -> SourceError {
+    SourceError::Permanent(e.to_string())
+}
+
+impl PokedexSource for UreqSource {
+    fn species_ids(&self) -> Result<Vec<u32>, SourceError> {
+        let json = self.get_text(&format!("{}/pokemon-species?limit=100000", self.base))?;
+        parse_species_list(&json).map_err(permanent)
+    }
+
+    fn type_names(&self, api_name: &str) -> Result<LocalizedText, SourceError> {
+        let json = self.get_text(&format!("{}/type/{api_name}", self.base))?;
+        parse_type_names(&json).map_err(permanent)
+    }
+
+    fn species(
+        &self,
+        id: u32,
+        types: &HashMap<String, LocalizedText>,
+    ) -> Result<Species, SourceError> {
+        let species_json = self.get_text(&format!("{}/pokemon-species/{id}", self.base))?;
+        let species = parse_species(&species_json).map_err(permanent)?;
+        let pokemon_json = self.get_text(&species.default_pokemon_url)?;
+        let pokemon = parse_pokemon(&pokemon_json).map_err(permanent)?;
+        Ok(assemble(species, pokemon, types))
+    }
+
+    fn sprite(&self, url: &str) -> Result<Vec<u8>, SourceError> {
+        use std::io::Read;
+        let mut bytes = Vec::new();
+        self.get(url)?
+            .into_reader()
+            .take(MAX_SPRITE_BYTES)
+            .read_to_end(&mut bytes)
+            .map_err(|e| SourceError::Transient(format!("그림 읽기 실패: {e}")))?;
+        Ok(bytes)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -361,5 +447,15 @@ mod tests {
     fn species_without_default_variety_is_error() {
         let json = SPECIES_B.replace("\"is_default\": true", "\"is_default\": false");
         assert!(parse_species(&json).is_err());
+    }
+
+    /// 실제 PokéAPI를 부르는 확인용 테스트. CI에서는 돌리지 않는다.
+    /// 실행: `cargo test live_fetch_pikachu -- --ignored`
+    #[test]
+    #[ignore]
+    fn live_fetch_pikachu() {
+        let source = UreqSource::new();
+        let s = source.species(25, &HashMap::new()).unwrap();
+        assert_eq!(s.name.en.as_deref(), Some("Pikachu"));
     }
 }

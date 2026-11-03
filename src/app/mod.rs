@@ -2,3 +2,4 @@
 
 pub mod ports;
 pub mod show_greeting;
+pub mod sync;
