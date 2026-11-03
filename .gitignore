@@ -1,0 +1,8 @@
+# 빌드 산출물
+/target
+
+# 에이전트 작업용 임시 파일
+/.superpowers/
+
+# macOS
+.DS_Store
