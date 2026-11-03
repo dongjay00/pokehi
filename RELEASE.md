@@ -28,7 +28,9 @@ GitHub Release용 바이너리 대상은 다음과 같다. **[설계자 판단]*
 3. `vX.Y.Z` 태그로 GitHub Release를 게시한다.
 4. 릴리스 워크플로가 대상별 바이너리를 빌드해 Release에 첨부한다. 압축 파일과 SHA-256 체크섬을 함께 올린다.
 5. 같은 워크플로가 crates.io에 `cargo publish`한다.
-   - 인증은 crates.io Trusted Publishing(GitHub OIDC)을 쓴다. 지원되지 않으면 저장소 시크릿 `CARGO_REGISTRY_TOKEN`을 쓴다. 결정은 구현할 때 한다.
+   - 인증은 crates.io Trusted Publishing(GitHub OIDC, `rust-lang/crates-io-auth-action`)을 쓴다. **[결정: 구현 시]**
+   - Trusted Publisher는 crate가 crates.io에 이미 있어야 등록할 수 있다. 그래서 **첫 배포(0.1.0)는 로컬에서 API 토큰으로 직접 `cargo publish`** 한다. 그 뒤 crates.io의 crate 설정에서 Trusted Publisher(저장소 `dongjay00/pokehi`, 워크플로 `release.yml`)를 등록하면 다음 릴리스부터 워크플로가 배포한다.
+   - 첫 릴리스 때는 워크플로의 `publish-crate` job이 실패할 수 있다(이미 배포된 버전). 바이너리 첨부(`build` job)와는 별개라서 Release 자체에는 영향이 없다.
 6. 설치를 확인한다.
 
 ```sh
@@ -40,7 +42,7 @@ pokehi
 ## 일회성 설정 (사용자가 직접)
 
 1. GitHub에 공개 저장소를 만든다: https://github.com/dongjay00/pokehi
-2. crates.io 계정을 만든다(GitHub 로그인). Trusted Publisher를 등록하거나 API 토큰을 발급한다.
+2. crates.io 계정을 만든다(GitHub 로그인). API 토큰을 발급해 첫 버전을 직접 배포한 뒤 Trusted Publisher를 등록한다(위 릴리스 절차 5번).
 3. 첫 릴리스 전에 crate 이름이 아직 비어 있는지 다시 확인한다. 2026-11-03에 crates.io API로 확인했을 때 `pokehi`는 비어 있었다(404). 이름은 언제든 선점될 수 있다.
 
 ## 배포물에 넣지 않는 것
