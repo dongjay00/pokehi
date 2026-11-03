@@ -1,19 +1,58 @@
-# GitHub Release를 게시하면 OS별 바이너리를 빌드해 첨부하고 crates.io에 배포한다.
+# vX.Y.Z 태그를 push하면 검증 → GitHub Release 생성 → OS별 바이너리 첨부 → crates.io 배포를 차례로 한다.
 name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    tags: ["v*.*.*"]
 
 permissions:
   contents: read
 
 env:
   CARGO_TERM_COLOR: always
+  TAG: ${{ github.ref_name }}
 
 jobs:
+  verify:
+    name: 태그·버전 확인과 테스트
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: 태그와 Cargo.toml 버전 비교
+        id: version
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "pokehi") | .version')
+          if [[ "$TAG" != "v$version" ]]; then
+            echo "::error::태그($TAG)와 Cargo.toml 버전(v$version)이 다릅니다."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - run: cargo test --locked
+
+  create-release:
+    name: GitHub Release 생성
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Release 만들기(이미 있으면 건너뜀)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG가 이미 있어서 새로 만들지 않습니다."
+          else
+            gh release create "$TAG" --title "$TAG" --generate-notes --verify-tag
+          fi
+
   build:
     name: build (${{ matrix.target }})
+    needs: create-release
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write # Release에 파일을 첨부하기 위해 필요
@@ -26,7 +65,6 @@ jobs:
           - { target: x86_64-apple-darwin, os: macos-latest }
           - { target: x86_64-pc-windows-msvc, os: windows-latest }
     env:
-      TAG: ${{ github.event.release.tag_name }}
       TARGET: ${{ matrix.target }}
     steps:
       - uses: actions/checkout@v4
@@ -64,15 +102,31 @@ jobs:
 
   publish-crate:
     name: crates.io 배포
-    needs: build
+    needs: [verify, build]
     runs-on: ubuntu-latest
     permissions:
       id-token: write # crates.io Trusted Publishing(OIDC)
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
     steps:
+      - name: 이미 배포된 버전인지 확인
+        id: exists
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "User-Agent: pokehi-release (github.com/${{ github.repository }})" \
+            "https://crates.io/api/v1/crates/pokehi/$VERSION")
+          if [[ "$code" == "200" ]]; then
+            echo "pokehi $VERSION은 이미 crates.io에 있어서 배포를 건너뜁니다."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v4
+        if: steps.exists.outputs.skip != 'true'
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.exists.outputs.skip != 'true'
       - uses: rust-lang/crates-io-auth-action@v1
+        if: steps.exists.outputs.skip != 'true'
         id: auth
       - run: cargo publish --locked
+        if: steps.exists.outputs.skip != 'true'
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}

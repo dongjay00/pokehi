@@ -23,14 +23,23 @@ GitHub Release용 바이너리 대상은 다음과 같다. **[설계자 판단]*
 
 ## 릴리스 절차
 
-1. `Cargo.toml`의 버전을 올린다.
-2. CI가 통과하는지 확인한다.
-3. `vX.Y.Z` 태그로 GitHub Release를 게시한다.
-4. 릴리스 워크플로가 대상별 바이너리를 빌드해 Release에 첨부한다. 압축 파일과 SHA-256 체크섬을 함께 올린다.
-5. 같은 워크플로가 crates.io에 `cargo publish`한다.
-   - 인증은 crates.io Trusted Publishing(GitHub OIDC, `rust-lang/crates-io-auth-action`)을 쓴다. **[결정: 구현 시]**
-   - Trusted Publisher는 crate가 crates.io에 이미 있어야 등록할 수 있다. 그래서 **첫 배포(0.1.0)는 로컬에서 API 토큰으로 직접 `cargo publish`** 한다. 그 뒤 crates.io의 crate 설정에서 Trusted Publisher(저장소 `dongjay00/pokehi`, 워크플로 `release.yml`)를 등록하면 다음 릴리스부터 워크플로가 배포한다.
-   - 첫 릴리스 때는 워크플로의 `publish-crate` job이 실패할 수 있다(이미 배포된 버전). 바이너리 첨부(`build` job)와는 별개라서 Release 자체에는 영향이 없다.
+릴리스는 `vX.Y.Z` 태그를 push하면 자동으로 진행된다(`.github/workflows/release.yml`).
+
+1. `Cargo.toml`의 `version`을 올리고 `cargo check`로 `Cargo.lock`도 갱신한다.
+2. 커밋해서 `main`에 push하고 CI가 통과하는지 확인한다.
+3. 태그를 만들어 push한다.
+   ```sh
+   git tag v0.2.0
+   git push origin v0.2.0
+   ```
+4. 워크플로가 차례로 실행된다.
+   1. `verify`: 태그와 `Cargo.toml` 버전이 같은지 확인하고 `cargo test --locked`를 돌린다. 다르면 여기서 멈춘다.
+   2. `create-release`: 태그 이름으로 GitHub Release를 만든다. 릴리스 노트는 커밋 기록으로 자동 생성한다. 같은 이름의 Release가 이미 있으면 그대로 쓴다.
+   3. `build`: 대상별 바이너리를 빌드해 Release에 첨부한다. 압축 파일과 SHA-256 체크섬을 함께 올린다.
+   4. `publish-crate`: crates.io에 `cargo publish`한다. 그 버전이 이미 crates.io에 있으면 건너뛴다.
+5. 인증은 crates.io Trusted Publishing(GitHub OIDC, `rust-lang/crates-io-auth-action`)을 쓴다. 저장소 시크릿에 토큰을 넣지 않는다.
+   - Trusted Publisher는 crate가 crates.io에 이미 있어야 등록할 수 있다. 그래서 첫 배포(0.1.0)는 로컬에서 API 토큰으로 직접 `cargo publish`했다.
+   - crates.io의 pokehi Settings → Trusted Publishing에 저장소 `dongjay00/pokehi`, 워크플로 파일 `release.yml`을 등록해 두어야 한다. 환경(environment)은 비워 둔다.
 6. 설치를 확인한다.
 
 ```sh
@@ -42,8 +51,8 @@ pokehi
 ## 일회성 설정 (사용자가 직접)
 
 1. GitHub에 공개 저장소를 만든다: https://github.com/dongjay00/pokehi
-2. crates.io 계정을 만든다(GitHub 로그인). API 토큰을 발급해 첫 버전을 직접 배포한 뒤 Trusted Publisher를 등록한다(위 릴리스 절차 5번).
-3. 첫 릴리스 전에 crate 이름이 아직 비어 있는지 다시 확인한다. 2026-11-03에 crates.io API로 확인했을 때 `pokehi`는 비어 있었다(404). 이름은 언제든 선점될 수 있다.
+2. crates.io 계정을 만들고(GitHub 로그인) API 토큰으로 첫 버전을 직접 배포한다. 2026-11-04에 0.1.0 배포를 확인했다.
+3. crates.io에 Trusted Publisher를 등록한다(위 릴리스 절차 5번).
 
 ## 배포물에 넣지 않는 것
 

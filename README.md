@@ -105,6 +105,8 @@ cargo clippy --all-targets -- -D warnings
 cargo test live_fetch_pikachu -- --ignored   # 실제 PokéAPI 확인(선택)
 ```
 
+릴리스는 `Cargo.toml` 버전을 올린 뒤 `vX.Y.Z` 태그를 push하면 GitHub Actions가 Release 생성, 바이너리 첨부, crates.io 배포까지 합니다. 자세한 절차는 [`RELEASE.md`](RELEASE.md)에 있습니다.
+
 설계 문서는 [`SPEC.md`](SPEC.md)(제품 명세), [`PLAN.md`](PLAN.md)(도메인 설계), [`RELEASE.md`](RELEASE.md)(배포 계획)에 있습니다.
 
 ## 고지
