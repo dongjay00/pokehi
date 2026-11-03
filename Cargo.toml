@@ -2,6 +2,7 @@
 name = "pokehi"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.88"
 description = "새 터미널을 열 때마다 포켓몬 한 마리가 인사하는 CLI"
 license = "MIT"
 repository = "https://github.com/dongjay00/pokehi"
