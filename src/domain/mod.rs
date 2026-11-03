@@ -3,3 +3,4 @@
 pub mod language;
 pub mod selection;
 pub mod species;
+pub mod sprite;
