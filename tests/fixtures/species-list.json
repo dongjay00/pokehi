@@ -1,0 +1,10 @@
+{
+  "count": 3,
+  "next": null,
+  "previous": null,
+  "results": [
+    {"name": "testmon-two", "url": "https://pokeapi.co/api/v2/pokemon-species/9002/"},
+    {"name": "testmon-three", "url": "https://pokeapi.co/api/v2/pokemon-species/9003/"},
+    {"name": "testmon", "url": "https://pokeapi.co/api/v2/pokemon-species/9001/"}
+  ]
+}

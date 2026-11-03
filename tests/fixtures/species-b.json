@@ -1,0 +1,18 @@
+{
+  "id": 9002,
+  "name": "testmon-two",
+  "names": [
+    {"name": "테스트몬투", "language": {"name": "ko", "url": "https://pokeapi.co/api/v2/language/3/"}},
+    {"name": "Testmon Two", "language": {"name": "en", "url": "https://pokeapi.co/api/v2/language/9/"}}
+  ],
+  "genera": [
+    {"genus": "두번째포켓몬", "language": {"name": "ko", "url": "https://pokeapi.co/api/v2/language/3/"}},
+    {"genus": "Second Pokémon", "language": {"name": "en", "url": "https://pokeapi.co/api/v2/language/9/"}}
+  ],
+  "flavor_text_entries": [
+    {"flavor_text": "Only an English synthetic entry.", "language": {"name": "en", "url": "https://pokeapi.co/api/v2/language/9/"}, "version": {"name": "gamma", "url": "https://pokeapi.co/api/v2/version/3/"}}
+  ],
+  "varieties": [
+    {"is_default": true, "pokemon": {"name": "testmon-two", "url": "https://pokeapi.co/api/v2/pokemon/9002/"}}
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": 9001,
+  "name": "testmon",
+  "types": [
+    {"slot": 2, "type": {"name": "flying", "url": "https://pokeapi.co/api/v2/type/3/"}},
+    {"slot": 1, "type": {"name": "electric", "url": "https://pokeapi.co/api/v2/type/13/"}}
+  ],
+  "sprites": {
+    "front_default": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/9001.png",
+    "front_shiny": null,
+    "back_default": null
+  }
+}

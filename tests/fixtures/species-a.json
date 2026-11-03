@@ -1,0 +1,24 @@
+{
+  "id": 9001,
+  "name": "testmon",
+  "order": 9001,
+  "names": [
+    {"name": "テストモン", "language": {"name": "ja", "url": "https://pokeapi.co/api/v2/language/1/"}},
+    {"name": "테스트몬", "language": {"name": "ko", "url": "https://pokeapi.co/api/v2/language/3/"}},
+    {"name": "Testmon", "language": {"name": "en", "url": "https://pokeapi.co/api/v2/language/9/"}}
+  ],
+  "genera": [
+    {"genus": "시험포켓몬", "language": {"name": "ko", "url": "https://pokeapi.co/api/v2/language/3/"}},
+    {"genus": "Test Pokémon", "language": {"name": "en", "url": "https://pokeapi.co/api/v2/language/9/"}}
+  ],
+  "flavor_text_entries": [
+    {"flavor_text": "합성 설명\n첫 번째\f문장이다.", "language": {"name": "ko", "url": "https://pokeapi.co/api/v2/language/3/"}, "version": {"name": "alpha", "url": "https://pokeapi.co/api/v2/version/1/"}},
+    {"flavor_text": "A synthetic\nentry for tests.", "language": {"name": "en", "url": "https://pokeapi.co/api/v2/language/9/"}, "version": {"name": "alpha", "url": "https://pokeapi.co/api/v2/version/1/"}},
+    {"flavor_text": "テスト用の文章。", "language": {"name": "ja", "url": "https://pokeapi.co/api/v2/language/1/"}, "version": {"name": "alpha", "url": "https://pokeapi.co/api/v2/version/1/"}},
+    {"flavor_text": "합성 설명 두 번째 문장이다.", "language": {"name": "ko", "url": "https://pokeapi.co/api/v2/language/3/"}, "version": {"name": "beta", "url": "https://pokeapi.co/api/v2/version/2/"}}
+  ],
+  "varieties": [
+    {"is_default": false, "pokemon": {"name": "testmon-alt", "url": "https://pokeapi.co/api/v2/pokemon/19001/"}},
+    {"is_default": true, "pokemon": {"name": "testmon", "url": "https://pokeapi.co/api/v2/pokemon/9001/"}}
+  ]
+}

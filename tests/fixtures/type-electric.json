@@ -1,0 +1,9 @@
+{
+  "id": 13,
+  "name": "electric",
+  "names": [
+    {"name": "でんき", "language": {"name": "ja-Hrkt", "url": "https://pokeapi.co/api/v2/language/1/"}},
+    {"name": "전기", "language": {"name": "ko", "url": "https://pokeapi.co/api/v2/language/3/"}},
+    {"name": "Electric", "language": {"name": "en", "url": "https://pokeapi.co/api/v2/language/9/"}}
+  ]
+}
