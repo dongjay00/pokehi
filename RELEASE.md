@@ -76,3 +76,20 @@ cmd.exe는 지원하지 않는다(SPEC "지원 터미널과 색 모드").
 | macOS Terminal.app | 256 | | | |
 | macOS iTerm2 또는 Ghostty | truecolor | | | |
 | Linux GNOME Terminal 등 | truecolor | | | |
+
+### 자동 검증 기록 (0.1.0 준비, 2026-11-03, macOS arm64)
+
+화면을 눈으로 본 것이 아니라 `--force` 출력을 스크립트로 검사한 결과다. 위 점검표의 터미널별 확인은 사람이 따로 해야 한다.
+
+| 항목 | 결과 |
+|---|---|
+| `pokehi sync` (빈 캐시) | 1025종 저장, 실패 0, 그림 실패 0, 약 1분 33초, 캐시 9.4MB |
+| `pokehi sync` 재실행 | 저장 0(전부 건너뜀), 약 1.2초(목록·타입 요청만) |
+| `--pokemon 25` | `No.025 피카츄 Pikachu`, `[전기]`, 쥐포켓몬, 한국어 설명 두 줄 |
+| `--pokemon 1000` | `No.1000 타부자고 Gholdengo`, 한국어 설명 없음 → 영어 설명으로 대체 |
+| `--lang en` | `No.025 Pikachu`, `Mouse Pokémon` |
+| `--color 256` | `38;5;` 이스케이프만 사용, 트루컬러 0개 |
+| `--today` 2회 | 같은 출력(2026-11-03 → No.207) |
+| stdout이 터미널이 아님 | stdout·stderr 모두 비어 있음 |
+| 실행 시간(따뜻한 캐시, release) | 30회 평균 3.6ms, 최대 4.4ms (목표 50ms 미만) |
+| CI (ubuntu, macOS, windows) | fmt·clippy·test 통과 |
