@@ -19,8 +19,10 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false # 빌드 스크립트가 GITHUB_TOKEN을 읽지 못하게
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       - name: 태그와 Cargo.toml 버전 비교
         id: version
         run: |
@@ -67,8 +69,10 @@ jobs:
     env:
       TARGET: ${{ matrix.target }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false # 빌드 스크립트가 GITHUB_TOKEN을 읽지 못하게
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           targets: ${{ matrix.target }}
       - run: cargo build --release --locked --target "$TARGET"
@@ -113,17 +117,19 @@ jobs:
         id: exists
         run: |
           code=$(curl -s -o /dev/null -w '%{http_code}' \
-            -H "User-Agent: pokehi-release (github.com/${{ github.repository }})" \
+            -H "User-Agent: pokehi-release (github.com/$GITHUB_REPOSITORY)" \
             "https://crates.io/api/v1/crates/pokehi/$VERSION")
           if [[ "$code" == "200" ]]; then
             echo "pokehi $VERSION은 이미 crates.io에 있어서 배포를 건너뜁니다."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false # 빌드 스크립트가 GITHUB_TOKEN을 읽지 못하게
         if: steps.exists.outputs.skip != 'true'
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         if: steps.exists.outputs.skip != 'true'
-      - uses: rust-lang/crates-io-auth-action@v1
+      - uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
         if: steps.exists.outputs.skip != 'true'
         id: auth
       - run: cargo publish --locked
