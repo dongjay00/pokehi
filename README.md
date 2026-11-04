@@ -52,6 +52,8 @@ PokéAPI에서 전체 종 데이터와 그림을 받아 로컬 캐시에 저장�
 if (Get-Command pokehi -ErrorAction SilentlyContinue) { pokehi }
 ```
 
+모션을 켜려면 `pokehi --motion hop`처럼 쓰거나 `export POKEHI_MOTION=hop`을 함께 넣으세요. 모션이 도는 동안(1초 미만)은 프롬프트가 늦게 뜹니다.
+
 stdout이 터미널이 아니면 pokehi는 아무것도 출력하지 않습니다. 그래서 비대화형 SSH 세션의 `scp`, `rsync`, `sftp`도 깨지지 않습니다. cmd.exe는 지원하지 않습니다.
 
 ## 사용법
@@ -63,6 +65,7 @@ stdout이 터미널이 아니면 pokehi는 아무것도 출력하지 않습니�
 | `pokehi --lang en` | 영어로 표시. 기본은 `ko` |
 | `pokehi --pokemon <번호\|영문이름>` | 지정한 포켓몬 표시(예: `--pokemon 25`, `--pokemon pikachu`) |
 | `pokehi --color <auto\|truecolor\|256>` | 색 출력 방식. 기본은 `auto` |
+| `pokehi --motion <hop\|shake\|none>` | 그림이 깡총 뛰거나(`hop`) 좌우로 흔들린 뒤 멈춤. 기본은 `none` |
 | `pokehi --force` | stdout이 터미널이 아니어도 출력(파이프, 스크린샷용) |
 | `pokehi sync` | 도감 데이터와 그림을 받아 캐시에 저장 |
 | `pokehi --help`, `--version` | 사용법, 버전 |
@@ -72,6 +75,7 @@ stdout이 터미널이 아니면 pokehi는 아무것도 출력하지 않습니�
 | 변수 | 뜻 |
 |---|---|
 | `POKEHI_LANG` | 기본 언어(`ko` 또는 `en`). `--lang`이 더 우선합니다 |
+| `POKEHI_MOTION` | 기본 모션(`hop`, `shake`, `none`). `--motion`이 더 우선합니다 |
 | `POKEHI_DATA_DIR` | 캐시 위치를 바꿉니다 |
 | `NO_COLOR` | 값이 있으면 색과 그림 없이 정보만 출력합니다 |
 

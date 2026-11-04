@@ -3,25 +3,7 @@
 use super::*;
 use crate::domain::greeting::{Badge, Greeting};
 use crate::domain::sprite::Sprite;
-use crate::render::text::display_width;
-
-/// ANSI 이스케이프(`ESC [ ... 문자`)를 지운다.
-fn strip_ansi(s: &str) -> String {
-    let mut out = String::new();
-    let mut chars = s.chars();
-    while let Some(c) = chars.next() {
-        if c == '\x1b' {
-            for c2 in chars.by_ref() {
-                if c2.is_ascii_alphabetic() {
-                    break;
-                }
-            }
-        } else {
-            out.push(c);
-        }
-    }
-    out
-}
+use crate::render::text::{display_width, strip_ansi};
 
 fn opaque(w: u32, h: u32) -> Sprite {
     Sprite::new(w, h, vec![[200, 100, 50, 255]; (w * h) as usize])

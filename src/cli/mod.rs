@@ -19,8 +19,10 @@ use crate::app::ports::PokedexSource;
 use crate::app::show_greeting::{show_greeting, GreetingError, Target};
 use crate::app::sync::{sync_pokedex, MAX_WORKERS};
 use crate::domain::language::Language;
+use crate::domain::motion::Motion;
 use crate::domain::selection::SelectionMode;
 use crate::render::color::detect_color_mode;
+use crate::render::motion::{animate, Animation};
 use crate::render::{render, ColorMode};
 use messages::{message, Msg};
 
@@ -56,6 +58,10 @@ pub struct Cli {
     #[arg(long, value_enum, default_value_t = ColorArg::Auto)]
     color: ColorArg,
 
+    /// 그림 등장 모션 [기본: POKEHI_MOTION 또는 none]
+    #[arg(long, value_enum)]
+    motion: Option<MotionArg>,
+
     /// stdout이 터미널이 아니어도 출력합니다
     #[arg(long)]
     force: bool,
@@ -74,6 +80,16 @@ enum LangArg {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum MotionArg {
+    /// 제자리에서 깡총 뛰기
+    Hop,
+    /// 좌우로 흔들기
+    Shake,
+    /// 움직이지 않음
+    None,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum ColorArg {
     Auto,
     Truecolor,
@@ -86,12 +102,15 @@ pub struct Context<'a> {
     pub env: HashMap<String, String>,
     pub stdout_is_tty: bool,
     pub term_width: Option<usize>,
+    pub term_height: Option<usize>,
     /// Windows에서 VT 모드를 켠 결과. 다른 OS에서는 `None`.
     pub windows_vt_ok: Option<bool>,
     pub today: NaiveDate,
     pub out: &'a mut dyn Write,
     pub err: &'a mut dyn Write,
     pub rng: Box<dyn FnMut() -> u64 + 'a>,
+    /// 모션 프레임 사이에 기다린다. 테스트에서는 기다리지 않는다.
+    pub sleep: Box<dyn FnMut(Duration) + 'a>,
     pub make_source: Box<dyn Fn() -> Box<dyn PokedexSource> + 'a>,
 }
 
@@ -118,6 +137,19 @@ fn resolve_lang(flag: Option<LangArg>, env: Option<&str>) -> (Language, Option<S
         (None, Some(v)) => match Language::parse(v) {
             Some(lang) => (lang, None),
             None => (Language::Ko, Some(v.to_string())),
+        },
+    }
+}
+
+/// 모션을 정한다: `--motion` > `POKEHI_MOTION` > 없음. 환경 변수 값이 잘못됐으면 경고를 돌려준다.
+fn resolve_motion(flag: Option<MotionArg>, env: Option<&str>) -> (Option<Motion>, Option<String>) {
+    match (flag, env) {
+        (Some(MotionArg::Hop), _) => (Some(Motion::Hop), None),
+        (Some(MotionArg::Shake), _) => (Some(Motion::Shake), None),
+        (Some(MotionArg::None), _) | (None, None) => (None, None),
+        (None, Some(v)) => match Motion::parse(v) {
+            Some(m) => (m, None),
+            None => (None, Some(v.to_string())),
         },
     }
 }
@@ -203,9 +235,24 @@ fn run_greeting(cli: &Cli, cache: FsCache, lang: Language, ctx: &mut Context) ->
         (None, false) => Target::Pick(SelectionMode::Random),
     };
 
+    let (motion, bad_motion) = resolve_motion(cli.motion, ctx.env_var("POKEHI_MOTION"));
+    if let Some(v) = bad_motion {
+        ctx.warn(&message(lang, Msg::BadMotionEnv(v)));
+    }
+
     match show_greeting(&cache, &cache, &target, lang, &mut *ctx.rng) {
         Ok(g) => {
-            let _ = ctx.out.write_all(render(&g, width, mode).as_bytes());
+            // 모션은 실제 터미널이고 화면에 다 들어갈 때만 쓴다. 아니면 정지 화면.
+            let anim = motion
+                .filter(|_| ctx.stdout_is_tty)
+                .and_then(|m| animate(&g, m, width, mode))
+                .filter(|a| ctx.term_height.is_some_and(|h| a.fits(width, h)));
+            match anim {
+                Some(a) => play(&a, ctx),
+                None => {
+                    let _ = ctx.out.write_all(render(&g, width, mode).as_bytes());
+                }
+            }
             0
         }
         Err(GreetingError::NotFound(x)) => {
@@ -221,6 +268,21 @@ fn run_greeting(cli: &Cli, cache: FsCache, lang: Language, ctx: &mut Context) ->
             ctx.warn(&message(lang, m));
             0
         }
+    }
+}
+
+/// 프레임을 차례로 그린다. 다음 프레임 전에 커서를 앞 프레임 첫 줄로 올리고 그 아래를 지운다.
+/// 마지막 프레임이 화면에 남는다.
+fn play(anim: &Animation, ctx: &mut Context) {
+    let mut prev_lines = 0;
+    for (i, frame) in anim.frames.iter().enumerate() {
+        if i > 0 {
+            (ctx.sleep)(anim.interval);
+            let _ = write!(ctx.out, "\x1b[{prev_lines}A\r\x1b[J");
+        }
+        let _ = ctx.out.write_all(frame.as_bytes());
+        let _ = ctx.out.flush();
+        prev_lines = frame.matches('\n').count();
     }
 }
 

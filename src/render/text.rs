@@ -7,6 +7,29 @@ pub fn display_width(s: &str) -> usize {
     UnicodeWidthStr::width(s)
 }
 
+/// ANSI 이스케이프(`ESC [ ... 문자`)를 지운 글자만 남긴다.
+pub fn strip_ansi(s: &str) -> String {
+    let mut out = String::new();
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            for c2 in chars.by_ref() {
+                if c2.is_ascii_alphabetic() {
+                    break;
+                }
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+/// 이스케이프가 섞인 문자열의 표시 폭.
+pub fn visible_width(s: &str) -> usize {
+    display_width(&strip_ansi(s))
+}
+
 /// 공백 기준으로 탐욕적으로 줄을 나눈다. 한 단어가 `width`보다 길면 문자 단위로 쪼갠다.
 /// 각 줄의 표시 폭은 `width` 이하다(문자 하나가 `width`보다 넓은 경우만 예외).
 /// `width`가 0이면 1로 본다.

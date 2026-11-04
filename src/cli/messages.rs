@@ -10,6 +10,7 @@ pub enum Msg {
     Corrupt,
     BadArgs,
     BadLangEnv(String),
+    BadMotionEnv(String),
     NotFound(String),
     SyncProgress(usize, usize),
     SyncDone {
@@ -44,6 +45,12 @@ pub fn message(lang: Language, m: Msg) -> String {
             format!("pokehi: POKEHI_LANG='{v}'을(를) 알 수 없어 ko를 사용합니다")
         }
         (En, Msg::BadLangEnv(v)) => format!("pokehi: unknown POKEHI_LANG='{v}', using ko"),
+        (Ko, Msg::BadMotionEnv(v)) => {
+            format!("pokehi: POKEHI_MOTION='{v}'을(를) 알 수 없어 모션 없이 표시합니다")
+        }
+        (En, Msg::BadMotionEnv(v)) => {
+            format!("pokehi: unknown POKEHI_MOTION='{v}', showing without motion")
+        }
         (Ko, Msg::NotFound(x)) => format!("pokehi: '{x}' 포켓몬이 캐시에 없습니다"),
         (En, Msg::NotFound(x)) => format!("pokehi: pokemon '{x}' not in cache"),
         (Ko, Msg::SyncProgress(d, t)) => format!("동기화 중 {d}/{t}"),

@@ -2,6 +2,7 @@
 
 pub mod color;
 pub mod halfblock;
+pub mod motion;
 pub mod text;
 
 /// 색 출력 방식.
@@ -14,6 +15,7 @@ pub enum ColorMode {
 }
 
 use crate::domain::greeting::Greeting;
+use crate::domain::sprite::Sprite;
 use color::{bg, fg, BOLD, DIM, RESET};
 
 /// 그림과 정보 사이 간격(칸).
@@ -81,13 +83,24 @@ fn info_lines(g: &Greeting, info_width: usize, mode: ColorMode) -> Vec<String> {
 /// 색 모드가 `None`이면 그림을 생략하고 정보만 이스케이프 없이 출력한다.
 /// 출력은 빈 줄 하나로 끝난다.
 pub fn render(g: &Greeting, term_width: usize, mode: ColorMode) -> String {
-    let sprite = g.sprite.as_ref().filter(|_| mode != ColorMode::None);
+    render_layout(g, g.sprite.as_ref(), GAP, term_width, mode)
+}
+
+/// `render`와 같지만 그림과 간격을 바꿔 그린다. 모션 프레임을 만들 때 쓴다.
+pub(crate) fn render_layout(
+    g: &Greeting,
+    sprite: Option<&Sprite>,
+    gap: usize,
+    term_width: usize,
+    mode: ColorMode,
+) -> String {
+    let sprite = sprite.filter(|_| mode != ColorMode::None);
     let sprite_rows = sprite
         .map(|s| halfblock::sprite_rows(s, mode))
         .unwrap_or_default();
     let sprite_width = sprite.map_or(0, |s| s.width as usize);
     let left_width = if sprite.is_some() {
-        sprite_width + GAP
+        sprite_width + gap
     } else {
         0
     };
@@ -107,7 +120,7 @@ pub fn render(g: &Greeting, term_width: usize, mode: ColorMode) -> String {
                 None => out.push_str(&" ".repeat(sprite_width)),
             }
             if let Some(line) = info_line {
-                out.push_str(&" ".repeat(GAP));
+                out.push_str(&" ".repeat(gap));
                 out.push_str(line);
             }
         } else if let Some(line) = info_line {

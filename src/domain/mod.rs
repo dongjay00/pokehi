@@ -2,6 +2,7 @@
 
 pub mod greeting;
 pub mod language;
+pub mod motion;
 pub mod selection;
 pub mod species;
 pub mod sprite;

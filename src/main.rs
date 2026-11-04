@@ -30,16 +30,19 @@ fn main() {
         })
         .collect();
 
+    let size = terminal_size::terminal_size();
     let code = {
         let mut ctx = Context {
             env,
             stdout_is_tty,
-            term_width: terminal_size::terminal_size().map(|(w, _)| usize::from(w.0)),
+            term_width: size.map(|(w, _)| usize::from(w.0)),
+            term_height: size.map(|(_, h)| usize::from(h.0)),
             windows_vt_ok: enable_vt(),
             today: chrono::Local::now().date_naive(),
             out: &mut out,
             err: &mut err,
             rng: Box::new(|| fastrand::u64(..)),
+            sleep: Box::new(std::thread::sleep),
             make_source: Box::new(|| Box::new(UreqSource::new())),
         };
         run(std::env::args_os().collect(), &mut ctx)

@@ -106,12 +106,15 @@ struct Run {
     code: i32,
     out: String,
     err: String,
+    /// `sleep`이 불린 횟수.
+    sleeps: usize,
 }
 
 struct Setup<'a> {
     args: &'a [&'a str],
     env: Vec<(&'a str, String)>,
     tty: bool,
+    height: Option<usize>,
     source: fn() -> Box<dyn PokedexSource>,
 }
 
@@ -120,6 +123,7 @@ fn setup<'a>(dir: &Path, args: &'a [&'a str]) -> Setup<'a> {
         args,
         env: vec![("POKEHI_DATA_DIR", dir.to_string_lossy().into_owned())],
         tty: true,
+        height: Some(40),
         source: || Box::new(FailingSource),
     }
 }
@@ -133,8 +137,13 @@ impl Setup<'_> {
         self.tty = tty;
         self
     }
+    fn height(mut self, height: Option<usize>) -> Self {
+        self.height = height;
+        self
+    }
     fn run(self) -> Run {
         let (mut out, mut err) = (Vec::new(), Vec::new());
+        let mut sleeps = 0;
         let code = {
             let mut ctx = Context {
                 env: self
@@ -144,11 +153,13 @@ impl Setup<'_> {
                     .collect(),
                 stdout_is_tty: self.tty,
                 term_width: Some(100),
+                term_height: self.height,
                 windows_vt_ok: None,
                 today: NaiveDate::from_ymd_opt(2026, 11, 3).unwrap(),
                 out: &mut out,
                 err: &mut err,
                 rng: Box::new(|| 0),
+                sleep: Box::new(|_| sleeps += 1),
                 make_source: Box::new(self.source),
             };
             let mut args = vec![OsString::from("pokehi")];
@@ -159,6 +170,7 @@ impl Setup<'_> {
             code,
             out: String::from_utf8(out).unwrap(),
             err: String::from_utf8(err).unwrap(),
+            sleeps,
         }
     }
 }
@@ -391,4 +403,83 @@ fn sync_lang_flag_after_subcommand() {
     let r = setup(tmp.path(), &["sync", "--lang", "en"]).run();
     assert_eq!(r.code, 1);
     assert!(r.err.contains("pokehi: sync failed:"));
+}
+
+/// 모션으로 다시 그린 횟수(커서를 올리고 지운 횟수).
+fn redraws(out: &str) -> usize {
+    out.matches("A\r\x1b[J").count()
+}
+
+#[test]
+fn motion_hop_redraws_frames() {
+    let tmp = seeded();
+    let r = setup(tmp.path(), &["--pokemon", "9001", "--motion", "hop"]).run();
+    assert_eq!(r.code, 0);
+    let n = Motion::Hop.poses().len() - 1;
+    assert_eq!((redraws(&r.out), r.sleeps), (n, n));
+    assert!(r.out.contains("테스트몬"));
+}
+
+#[test]
+fn motion_shake_redraws_frames() {
+    let tmp = seeded();
+    let r = setup(tmp.path(), &["--pokemon", "9001", "--motion", "shake"]).run();
+    let n = Motion::Shake.poses().len() - 1;
+    assert_eq!((redraws(&r.out), r.sleeps), (n, n));
+}
+
+#[test]
+fn no_motion_by_default() {
+    let tmp = seeded();
+    let r = setup(tmp.path(), &["--pokemon", "9001"]).run();
+    assert_eq!((redraws(&r.out), r.sleeps), (0, 0));
+}
+
+#[test]
+fn motion_env_used_and_flag_none_beats_env() {
+    let tmp = seeded();
+    let r = setup(tmp.path(), &["--pokemon", "9001"])
+        .env("POKEHI_MOTION", "hop")
+        .run();
+    assert!(redraws(&r.out) > 0);
+    let r = setup(tmp.path(), &["--pokemon", "9001", "--motion", "none"])
+        .env("POKEHI_MOTION", "hop")
+        .run();
+    assert_eq!(redraws(&r.out), 0);
+}
+
+#[test]
+fn bad_motion_env_warns_and_shows_static() {
+    let tmp = seeded();
+    let r = setup(tmp.path(), &["--pokemon", "9001"])
+        .env("POKEHI_MOTION", "spin")
+        .run();
+    assert_eq!(r.code, 0);
+    assert_eq!(
+        r.err,
+        format!(
+            "{}\n",
+            message(Language::Ko, Msg::BadMotionEnv("spin".into()))
+        )
+    );
+    assert_eq!(redraws(&r.out), 0);
+    assert!(r.out.contains("테스트몬"));
+}
+
+#[test]
+fn motion_falls_back_to_static() {
+    let tmp = seeded();
+    let args = ["--pokemon", "9001", "--motion", "hop", "--force"];
+    // 파이프로 출력할 때
+    let r = setup(tmp.path(), &args).tty(false).run();
+    assert_eq!((redraws(&r.out), r.sleeps), (0, 0));
+    assert!(r.out.contains("테스트몬"));
+    // 터미널 높이를 모르거나 모자랄 때
+    for h in [None, Some(2)] {
+        let r = setup(tmp.path(), &args).height(h).run();
+        assert_eq!((redraws(&r.out), r.sleeps), (0, 0), "{h:?}");
+    }
+    // 색을 쓰지 않을 때
+    let r = setup(tmp.path(), &args).env("NO_COLOR", "1").run();
+    assert_eq!((redraws(&r.out), r.sleeps), (0, 0));
 }

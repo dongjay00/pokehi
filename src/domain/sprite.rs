@@ -46,6 +46,20 @@ impl Sprite {
         self.width == 0 || self.height == 0
     }
 
+    /// `canvas_w × canvas_h` 투명 캔버스의 (x, y)에 이 그림을 놓는다. 캔버스를 벗어나는 부분은 버린다.
+    pub fn placed(&self, canvas_w: u32, canvas_h: u32, x: u32, y: u32) -> Sprite {
+        let mut pixels = vec![[0, 0, 0, 0]; (canvas_w as usize) * (canvas_h as usize)];
+        for sy in 0..self.height {
+            for sx in 0..self.width {
+                let (cx, cy) = (x + sx, y + sy);
+                if cx < canvas_w && cy < canvas_h {
+                    pixels[(cy as usize) * (canvas_w as usize) + cx as usize] = self.pixel(sx, sy);
+                }
+            }
+        }
+        Sprite::new(canvas_w, canvas_h, pixels)
+    }
+
     /// 불투명 픽셀의 경계 상자로 자른다. 전부 투명하면 0×0이 된다.
     pub fn crop_transparent(&self) -> Sprite {
         let mut bounds: Option<(u32, u32, u32, u32)> = None;
@@ -109,6 +123,20 @@ mod tests {
 
     fn solid(w: u32, h: u32, px: Rgba) -> Sprite {
         Sprite::new(w, h, vec![px; (w * h) as usize])
+    }
+
+    #[test]
+    fn placed_puts_sprite_on_transparent_canvas() {
+        let s = Sprite::new(2, 1, vec![R, B]);
+        let c = s.placed(3, 2, 1, 1);
+        assert_eq!((c.width, c.height), (3, 2));
+        assert_eq!(c.pixels, vec![CLEAR, CLEAR, CLEAR, CLEAR, R, B]);
+    }
+
+    #[test]
+    fn placed_clips_outside_canvas() {
+        let s = Sprite::new(2, 1, vec![R, B]);
+        assert_eq!(s.placed(2, 1, 1, 0).pixels, vec![CLEAR, R]);
     }
 
     fn with_opaque_at(w: u32, h: u32, points: &[(u32, u32)]) -> Sprite {
